@@ -1,0 +1,46 @@
+# ============================================
+# Fichiers d'environnement & Données sensibles
+# ============================================
+.env
+.env.local
+.env.*.local
+
+# ============================================
+# Environnements virtuels Python
+# ============================================
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ============================================
+# Caches Python & Bytecode
+# ============================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+
+# ============================================
+# Caches de données générées
+# ============================================
+embeddings_cache.json
+
+# ============================================
+# IDEs & Éditeurs de code
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ============================================
+# Fichiers système d'exploitation
+# ============================================
+Thumbs.db
+Desktop.ini
+.DS_Store
