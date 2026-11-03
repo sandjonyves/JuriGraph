@@ -1,5 +1,6 @@
 neo4j>=5.0.0
 python-dotenv>=1.0.0
+pydantic>=2
 # Fournisseur par défaut (Gemini). Inutile si vous utilisez un serveur
 # local compatible OpenAI (Ollama, vLLM, LM Studio...).
 google-genai>=1.0.0

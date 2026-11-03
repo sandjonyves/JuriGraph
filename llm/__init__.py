@@ -24,8 +24,10 @@ from __future__ import annotations
 import os
 
 from .base import BaseChat, ChatError, ChatResult
+from .cache import CacheDisque, cle_cache
 from .gemini import GeminiChat
 from .openai_compat import OllamaChat, OpenAIChat, OpenRouterChat
+from .validation import LLMValidationError, ValidatedResult, generate_validated
 
 PROVIDERS: dict[str, type[BaseChat]] = {
     "openrouter": OpenRouterChat,
@@ -62,6 +64,8 @@ def create_chat(provider: str | None = None, model: str | None = None,
 
 
 __all__ = [
-    "BaseChat", "ChatError", "ChatResult", "GeminiChat", "OllamaChat",
-    "OpenAIChat", "OpenRouterChat", "PROVIDERS", "create_chat",
+    "BaseChat", "CacheDisque", "ChatError", "ChatResult", "GeminiChat",
+    "LLMValidationError", "OllamaChat", "OpenAIChat", "OpenRouterChat",
+    "PROVIDERS", "ValidatedResult", "cle_cache", "create_chat",
+    "generate_validated",
 ]

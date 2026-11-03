@@ -54,4 +54,5 @@ frontend/dist/
 db.sqlite3
 *.log
 data/logs/
+data/cache/
 data/dossiers_reels/
