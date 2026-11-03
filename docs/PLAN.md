@@ -209,6 +209,8 @@ OPTIONS {indexConfig: {`fulltext.analyzer`: 'french'}};
 - [ ] Métriques : exactitude de la qualification principale, rappel des articles, exactitude des citations (100 % exigé), taux d'hallucination (0), taux d'abstention pertinente.
 - [ ] Cas adverses : faits insuffisants, plusieurs infractions, tentative, complicité.
 
+Les dossiers réels, même anonymisés, nécessitent une autorisation et une vérification humaine de l'anonymisation. Les dossiers synthétiques sont marqués `origine: synthetique` et leur qualification attendue doit être validée par un juriste (un LLM ne la fixe pas seul).
+
 **Livrables** : `predict.py`, `schemas/faits.py`, `schemas/qualification.py`, prompts, `data/eval/dossiers.jsonl`, rapport.
 
 ---
@@ -249,12 +251,12 @@ En solo à temps partiel, compter **6 à 8 semaines**. Le chemin critique est la
 | Dérive du schéma | prompts et schémas versionnés, JSONL bruts conservés |
 | Absence de juriste pour le gold set | commencer par 20 cas, assumer une éval partielle |
 
-**Décisions à prendre maintenant**
-1. Modèle LLM et budget (extraction + qualification).
-2. Éléments constitutifs en nœuds ou en propriétés JSON.
-3. Périmètre des peines : principales seulement, ou aussi accessoires/complémentaires, sursis, circonstances.
-4. Politique en cas d'ambiguïté : abstention ou meilleure hypothèse signalée.
-5. Qui relit l'échantillon de 40 articles.
+**Décisions proposées — à valider par l'utilisateur**
+1. Modèle : un modèle payant d'un niveau modéré, choisi après un test de 2 à 3 modèles sur 5 articles (vérifier les tarifs).
+2. Éléments constitutifs : propriétés de l'infraction en v1, nœuds seulement si un besoin apparaît.
+3. Peines : principales et alternatives lorsqu'elles sont écrites dans l'article ; sursis et circonstances plus tard.
+4. Cas ambigu : hypothèse signalée avec des conditions « à vérifier » ; abstention seulement si la recherche ne trouve aucun article pertinent.
+5. Relecture de l'échantillon de 40 articles : l'utilisateur + un juriste ou l'encadrant.
 
 ---
 
@@ -271,3 +273,5 @@ Je propose de démarrer le **lot 1 de la phase 1** :
 En parallèle (5 minutes), je peux charger les 271 renvois dans Neo4j et passer l'index plein texte en analyseur français.
 
 Voulez-vous que je commence par ce lot, et sur quel modèle LLM (OpenRouter payant, Gemini gratuit, ou local) ?
+
+Hors périmètre de ce plan : backend Django, interface React, évaluation finale du système complet.
