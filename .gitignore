@@ -44,3 +44,14 @@ embeddings_cache.json
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# ============================================
+# Compléments Étape 0
+# ============================================
+*.pyc
+node_modules/
+frontend/dist/
+db.sqlite3
+*.log
+data/logs/
+data/dossiers_reels/
