@@ -54,6 +54,7 @@ data/
 ```cypher
 (:Article)-[:DEFINIT_INFRACTION]->(:Infraction)
 (:Infraction)-[:PUNIT_PAR]->(:Peine)
+(:Infraction)-[:PEINES_PAR_RENVOI]->(:Article)
 (:Infraction)-[:A_POUR_ELEMENT {type:'legal'|'materiel'|'moral'}]->(:ElementConstitutif)
 (:Extraction {modele, prompt_version, date, statut, confiance})-[:PORTE_SUR]->(:Article)
 ```
@@ -94,13 +95,15 @@ Identifiants : `INF-320-1`, `PEI-320-1`, `ELT-320-1-2`.
       "type": "principale", "nature": "emprisonnement",
       "quantum_min": 5, "quantum_max": 10, "unite": "ans",
       "citation": "de cinq (05) à dix (10) ans"
-    }]
+    }],
+    "peines_renvoi": ["<numero>"]
   }],
   "conditions": ["..."],
   "renvois": ["318"],
   "confiance": 0.0
 }
 ```
+- `peines_renvoi` : liste de numéros d'articles dont l'infraction reprend les peines (cas « puni des peines de l'article X »). Environ 20 articles sont concernés (heuristique, à confirmer à l'extraction).
 - [ ] Règles du prompt : citation **verbatim obligatoire**, interdiction d'inventer, `null` si incertain, pas de conversion d'unité. L'unité d'un montant est recopiée telle qu'écrite dans le texte ("francs"), sans conversion.
 - [ ] 3 à 5 exemples few-shot (peine simple, fourchette, amende en francs, mort/à vie, renvoi).
 - [ ] Périmètre : 427 articles − 2 exclus (159 abrogé, 362-370 plage) = 425 vectorisés ; − l'article 1 (structurel) = 424 articles à extraire.
@@ -111,9 +114,12 @@ Identifiants : `INF-320-1`, `PEI-320-1`, `ELT-320-1-2`.
 - [ ] Comparer les nombres après suppression des espaces, y compris insécables (ex. "25 000" = "25000").
 - [ ] `quantum_min <= quantum_max` ; conversion jours/mois/ans pour comparaison ; cas `à vie` / `mort`.
 - [ ] Tout article cité doit exister (`numero` présent en base).
+- [ ] Chaque numéro de `peines_renvoi` doit exister en base ET apparaître dans le texte de l'article.
 - [ ] Un même article ne peut pas produire deux infractions identiques.
 - [ ] Rapport par article : `auto_ok`, `a_revoir`, `rejete`, avec la liste précise des erreurs.
 - [ ] Tests unitaires sur fixtures : bonne fiche, citation modifiée, chiffre inventé, fourchette inversée, unité fausse.
+
+Une fiche avec `infractions: []` est normale (articles du Livre I sur le système des peines, définitions, articles de renvoi) ; le vérificateur ne la traite pas comme une erreur. 14 articles du Livre I mentionnent l'emprisonnement sans définir d'infraction.
 
 ### 1.4 Échantillon de relecture humaine (2 jours)
 - [ ] 40 articles stratifiés : peine unique, peines multiples, amende en francs, mort/à vie, renvois, formulations ambiguës.
