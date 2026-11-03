@@ -77,6 +77,16 @@ class TestFiche(unittest.TestCase):
         })
         self.assertTrue(peine.perpetuite)
         self.assertIsNone(peine.quantum_min)
+        self.assertIsNone(peine.condition)
+
+    def test_condition_peine(self):
+        peine = Peine.model_validate({
+            "type": "alternative",
+            "nature": "mort",
+            "condition": "En temps de guerre",
+            "citation": "En temps de guerre, la peine est celle de mort.",
+        })
+        self.assertEqual(peine.condition, "En temps de guerre")
 
     def test_element_type_inconnu(self):
         with self.assertRaises(ValidationError):

@@ -31,6 +31,7 @@ class Peine(ModeleStrict):
     quantum_max: float | None = None
     unite: Literal["ans", "mois", "jours", "francs"] | None = None
     perpetuite: bool = False
+    condition: str | None = None
     citation: str
 
 

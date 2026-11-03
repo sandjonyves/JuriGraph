@@ -126,6 +126,15 @@ def verifier(fiche, article: dict, numeros_existants: Iterable[str]) -> dict:
             elif citation_norm not in texte:
                 _ajouter(rejets, f"{libelle} : citation de peine absente du texte")
 
+            condition = peine.get("condition")
+            if condition is not None:
+                condition_texte = str(condition)
+                if not condition_texte.strip():
+                    _ajouter(rejets, f"{libelle} : condition de peine vide")
+                elif normaliser(condition_texte) not in texte:
+                    _ajouter(rejets,
+                             f"{libelle} : condition de peine absente du texte")
+
             nombres = _nombres(citation)
             for champ in ("quantum_min", "quantum_max"):
                 quantum = _nombre(peine.get(champ))

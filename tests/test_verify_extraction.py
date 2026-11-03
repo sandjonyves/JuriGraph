@@ -139,6 +139,20 @@ class TestVerifier(unittest.TestCase):
         resultat = verifier(fiche, article(texte=texte), EXISTANTS)
         self.assertEqual(resultat["statut"], AUTO_OK)
 
+    def test_condition_peine_valide(self):
+        fiche = fiche_valide()
+        texte = TEXTE + " En temps de guerre, la peine est celle de mort."
+        fiche["infractions"][0]["peines"][0]["condition"] = "En temps de guerre"
+        resultat = verifier(fiche, article(texte=texte), EXISTANTS)
+        self.assertEqual(resultat["statut"], AUTO_OK)
+
+    def test_condition_peine_inventee(self):
+        fiche = fiche_valide()
+        fiche["infractions"][0]["peines"][0]["condition"] = "En temps de paix"
+        resultat = verifier(fiche, article(), EXISTANTS)
+        self.assertEqual(resultat["statut"], REJETE)
+        self.assertTrue(any("condition de peine" in e for e in resultat["erreurs"]))
+
     def test_fiche_pydantic(self):
         resultat = verifier(Fiche.model_validate(fiche_valide()), article(), EXISTANTS)
         self.assertEqual(resultat["statut"], AUTO_OK)
