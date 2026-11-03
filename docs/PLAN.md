@@ -56,16 +56,18 @@ data/
 (:Infraction)-[:PUNIT_PAR]->(:Peine)
 (:Infraction)-[:PEINES_PAR_RENVOI]->(:Article)
 (:Infraction)-[:A_POUR_ELEMENT {type:'legal'|'materiel'|'moral'}]->(:ElementConstitutif)
-(:Extraction {modele, prompt_version, date, statut, confiance})-[:PORTE_SUR]->(:Article)
+(:Extraction {modele, prompt_version, date, statut})-[:PORTE_SUR]->(:Article)
 ```
 
 Propriétés minimales :
-- `Infraction {id, libelle, article_source, statut, confiance}`
+- `Infraction {id, libelle, article_source, statut}`
 - `Peine {id, type, nature, quantum_min, quantum_max, unite, quantum_texte, article_source}`
 - `ElementConstitutif {id, type, texte, citation}`
 - `statut ∈ {auto_ok, a_revoir, valide, rejete}` + `extraction_id` partout (traçabilité).
 
-Identifiants : `INF-320-1`, `PEI-320-1`, `ELT-320-1-2`.
+Identifiants : Infraction `INF-<article>-<k>`, Peine `PEI-<article>-<k>-<j>` (k = n° de l'infraction, j = n° de la peine), Élément constitutif `ELT-<article>-<k>-<j>`. Le suffixe `-j` évite les collisions quand une infraction a plusieurs peines (ex. `PEI-<article>-1-1` et `PEI-<article>-1-2`).
+
+Le niveau de confiance n'est pas auto-déclaré : il est donné par le statut du vérificateur (`auto_ok`, `a_revoir`, `rejete`), puis par la relecture humaine (`valide`, `rejete`). `extraction_id` assure la traçabilité.
 
 ---
 
@@ -74,6 +76,7 @@ Identifiants : `INF-320-1`, `PEI-320-1`, `ELT-320-1-2`.
 ### 1.1 Socle LLM (2 jours)
 - [ ] Créer `llm/` sur le modèle de `embeddings/` : interface `BaseChat`, registre, cache.
 - [ ] Sortie **JSON strict** (schéma imposé + validation pydantic), température 0.
+- [ ] Ajouter `pydantic` à `requirements.txt` au moment d'écrire le code.
 - [ ] Retries ciblés, backoff, comptage tokens/coût, logs JSONL par run.
 - [ ] Cache clé = `hash(modèle + prompt_version + texte article)`, écriture atomique.
 - [ ] Mode `--dry-run` sans appel API.
@@ -99,8 +102,7 @@ Identifiants : `INF-320-1`, `PEI-320-1`, `ELT-320-1-2`.
     "peines_renvoi": ["<numero>"]
   }],
   "conditions": ["..."],
-  "renvois": ["318"],
-  "confiance": 0.0
+  "renvois": ["318"]
 }
 ```
 - `peines_renvoi` : liste de numéros d'articles dont l'infraction reprend les peines (cas « puni des peines de l'article X »). Environ 20 articles sont concernés (heuristique, à confirmer à l'extraction).
@@ -186,7 +188,7 @@ OPTIONS {indexConfig: {`fulltext.analyzer`: 'french'}};
 
 ### 3.3 Qualification (2 jours)
 - [ ] Prompt contraint aux **articles retrouvés uniquement**.
-- [ ] Sortie JSON : qualifications, articles cités, éléments satisfaits/non satisfaits, peine encourue, alternatives, confiance.
+- [ ] Sortie JSON : qualifications, articles cités, éléments satisfaits/non satisfaits, peine encourue, alternatives, statut de vérification.
 - [ ] Interdiction d'inventer un article ou une citation.
 
 ### 3.4 Vérification et garde-fous (2 jours)
