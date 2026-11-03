@@ -13,6 +13,7 @@ A_REVOIR = "a_revoir"
 REJETE = "rejete"
 
 MOTS_INFRACTION = ("emprisonnement", "amende", "puni")
+UNITES_DUREE = {"ans", "mois", "jours"}
 
 
 def normaliser(texte: str) -> str:
@@ -57,6 +58,22 @@ def _en_jours(quantum: float, unite: str | None) -> float | None:
     if unite == "jours":
         return quantum
     return None
+
+
+def _unite_presente(citation_normalisee: str, unite: str | None) -> bool:
+    """Vrai si le mot de l'unité apparaît dans la citation normalisée."""
+    if unite is None:
+        return True
+    motifs = {
+        "ans": r"\bans?\b|\bannées?\b",
+        "mois": r"\bmois\b",
+        "jours": r"\bjours?\b",
+        "francs": r"\bfrancs?\b",
+    }
+    motif = motifs.get(unite)
+    if motif is None:
+        return False
+    return re.search(motif, citation_normalisee) is not None
 
 
 def _contient_numero(texte_normalise: str, numero: str) -> bool:
@@ -136,32 +153,54 @@ def verifier(fiche, article: dict, numeros_existants: Iterable[str]) -> dict:
                              f"{libelle} : condition de peine absente du texte")
 
             nombres = _nombres(citation)
-            for champ in ("quantum_min", "quantum_max"):
+            for champ, champ_unite in (("quantum_min", "unite_min"),
+                                       ("quantum_max", "unite_max")):
                 quantum = _nombre(peine.get(champ))
-                if quantum is not None and not any(
-                        abs(n - quantum) < 1e-9 for n in nombres):
+                if quantum is None:
+                    continue
+                if not any(abs(n - quantum) < 1e-9 for n in nombres):
                     _ajouter(rejets,
                              f"{libelle} : {champ}={peine.get(champ)} absent de la citation")
+                unite = peine.get(champ_unite)
+                if unite is not None and not _unite_presente(citation_norm, unite):
+                    _ajouter(rejets,
+                             f"{libelle} : {champ}={peine.get(champ)} avec unité "
+                             f"{unite!r} absente de la citation")
 
             if "fcfa" in citation_norm and "fcfa" not in texte:
                 _ajouter(rejets,
                          f"{libelle} : unité FCFA absente du texte (le texte parle de francs)")
-            if peine.get("unite") == "francs" and "fcfa" in citation_norm:
+            if any(peine.get(champ) == "francs"
+                   for champ in ("unite_min", "unite_max")) and "fcfa" in citation_norm:
                 _ajouter(rejets, f"{libelle} : unité convertie en FCFA")
+
+            if peine.get("type") == "alternative" and peine.get("nature") not in {
+                    "travail_interet_general", "autre"}:
+                _ajouter(avertissements,
+                         f"{libelle} : type 'alternative' réservé au travail d'intérêt "
+                         f"général ou à la sanction-réparation (nature {peine.get('nature')!r})")
 
             quantum_min = _nombre(peine.get("quantum_min"))
             quantum_max = _nombre(peine.get("quantum_max"))
             if quantum_min is not None and quantum_max is not None:
-                unite = peine.get("unite")
-                minimum = _en_jours(quantum_min, unite)
-                maximum = _en_jours(quantum_max, unite)
-                if minimum is not None and maximum is not None:
-                    inverse = minimum > maximum
+                unite_min = peine.get("unite_min")
+                unite_max = peine.get("unite_max")
+                if unite_min in UNITES_DUREE and unite_max in UNITES_DUREE:
+                    minimum = _en_jours(quantum_min, unite_min)
+                    maximum = _en_jours(quantum_max, unite_max)
                 else:
-                    inverse = quantum_min > quantum_max
-                if inverse:
+                    minimum = quantum_min
+                    maximum = quantum_max
+                if minimum > maximum:
                     _ajouter(avertissements,
                              f"{libelle} : fourchette inversée ({quantum_min} > {quantum_max})")
+
+        if infraction.get("peines_au_choix"):
+            expression = "l'une de ces deux peines"
+            if expression not in texte:
+                _ajouter(rejets,
+                         f"{libelle} : peines_au_choix vrai mais l'expression "
+                         f"« {expression} » est absente du texte")
 
         peines_renvoi = infraction.get("peines_renvoi") or []
         for numero in peines_renvoi:

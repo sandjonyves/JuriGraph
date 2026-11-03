@@ -29,7 +29,8 @@ class Peine(ModeleStrict):
     ]
     quantum_min: float | None = None
     quantum_max: float | None = None
-    unite: Literal["ans", "mois", "jours", "francs"] | None = None
+    unite_min: Literal["ans", "mois", "jours", "francs"] | None = None
+    unite_max: Literal["ans", "mois", "jours", "francs"] | None = None
     perpetuite: bool = False
     condition: str | None = None
     citation: str
@@ -42,6 +43,7 @@ class Infraction(ModeleStrict):
     elements_constitutifs: list[Element] = Field(default_factory=list)
     peines: list[Peine] = Field(default_factory=list)
     peines_renvoi: list[str] = Field(default_factory=list)
+    peines_au_choix: bool = False
 
 
 class Fiche(ModeleStrict):

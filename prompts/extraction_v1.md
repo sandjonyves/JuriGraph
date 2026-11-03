@@ -12,7 +12,8 @@ pénal camerounais. Tu ne complètes jamais le texte avec tes connaissances.
 3. Si une information est absente ou incertaine, mets `null` pour un quantum et
    `[]` pour une liste. Ne devine pas.
 4. **Unité recopiée telle qu'écrite** : si le texte dit « francs », mets
-   `francs`. N'écris jamais `FCFA` et ne convertis aucune unité.
+   `francs` dans `unite_min` et `unite_max`. N'écris jamais `FCFA` et ne
+   convertis aucune unité.
 5. Les nombres doivent apparaître dans la citation de la peine. `quantum_min`
    et `quantum_max` sont des nombres, sans espaces.
 6. `peines_renvoi` sert uniquement quand le texte dit « puni des peines de
@@ -33,6 +34,19 @@ pénal camerounais. Tu ne complètes jamais le texte avec tes connaissances.
     exact du texte qui précise quand cette peine s'applique (ex. « En temps de
     guerre, d'état d'urgence ou d'exception »), ou `null` s'il n'y en a pas. Ce
     passage doit être une sous-chaîne exacte du texte fourni.
+12. **Unités séparées** : une fourchette peut avoir deux unités différentes
+    (ex. 3 mois à 3 ans) : renseigne `unite_min` et `unite_max` séparément, avec
+    la même valeur si l'unité est commune. Ne laisse JAMAIS un quantum à `null`
+    quand le texte le donne.
+13. **Type de peine** : mort, emprisonnement et amende sont des peines
+    PRINCIPALES (article 18). Le type `alternative` est réservé au travail
+    d'intérêt général et à la sanction-réparation (article 18-1). Les peines
+    accessoires sont celles de l'article 19.
+14. **Peines d'autres articles** : une phrase qui précise ou modifie les peines
+    d'AUTRES articles va dans `conditions`/`renvois`, jamais dans `peines`.
+15. **Peines au choix** : `peines_au_choix` vaut `true` si le texte dit « ou de
+    l'une de ces deux peines seulement » ou une formule équivalente ; sinon
+    `false`.
 
 ## Format de sortie
 
@@ -55,20 +69,18 @@ pénal camerounais. Tu ne complètes jamais le texte avec tes connaissances.
           "nature": "emprisonnement|amende|mort|travail_interet_general|autre",
           "quantum_min": null,
           "quantum_max": null,
-          "unite": "ans|mois|jours|francs|null",
+          "unite_min": "ans|mois|jours|francs|null",
+          "unite_max": "ans|mois|jours|francs|null",
           "perpetuite": false,
           "condition": null,
           "citation": "<extrait exact>"
         }
       ],
-      "peines_renvoi": ["<numéro>"]
+      "peines_renvoi": ["<numéro>"],
+      "peines_au_choix": false
     }
   ],
   "conditions": ["<condition>"],
   "renvois": ["<numéro>"]
 }
 ```
-
-## Exemples few-shot
-
-<!-- Les exemples seront ajoutés après validation humaine des articles choisis. -->

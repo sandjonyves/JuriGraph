@@ -36,7 +36,8 @@ def fiche_valide():
                     "nature": "emprisonnement",
                     "quantum_min": 5,
                     "quantum_max": 10,
-                    "unite": "ans",
+                    "unite_min": "ans",
+                    "unite_max": "ans",
                     "citation": "un emprisonnement de cinq (05) à dix (10) ans",
                 },
                 {
@@ -44,11 +45,13 @@ def fiche_valide():
                     "nature": "amende",
                     "quantum_min": 25000,
                     "quantum_max": 25000,
-                    "unite": "francs",
+                    "unite_min": "francs",
+                    "unite_max": "francs",
                     "citation": "une amende de 25 000 francs",
                 },
             ],
             "peines_renvoi": ["318"],
+            "peines_au_choix": False,
         }],
         "conditions": [],
         "renvois": ["318"],
@@ -82,6 +85,122 @@ class TestVerifier(unittest.TestCase):
         resultat = verifier(fiche, article(), EXISTANTS)
         self.assertEqual(resultat["statut"], A_REVOIR)
         self.assertTrue(any("fourchette" in e for e in resultat["erreurs"]))
+
+    def test_fourchette_deux_unites(self):
+        texte = ("Est puni d'un emprisonnement de trois (03) mois à trois (03) ans "
+                 "celui qui commet le fait.")
+        fiche = {
+            "article": "275",
+            "infractions": [{
+                "libelle": "Test",
+                "elements_constitutifs": [{
+                    "type": "materiel",
+                    "texte": "fait",
+                    "citation": "commet le fait",
+                }],
+                "peines": [{
+                    "type": "principale",
+                    "nature": "emprisonnement",
+                    "quantum_min": 3,
+                    "quantum_max": 3,
+                    "unite_min": "mois",
+                    "unite_max": "ans",
+                    "citation": "un emprisonnement de trois (03) mois à trois (03) ans",
+                }],
+                "peines_renvoi": [],
+                "peines_au_choix": False,
+            }],
+            "conditions": [],
+            "renvois": [],
+        }
+        resultat = verifier(fiche, article(texte=texte), EXISTANTS)
+        self.assertEqual(resultat["statut"], AUTO_OK)
+        self.assertEqual(resultat["erreurs"], [])
+
+    def test_fourchette_deux_unites_inversee(self):
+        texte = ("Est puni d'un emprisonnement de trois (03) ans à trois (03) mois "
+                 "celui qui commet le fait.")
+        fiche = {
+            "article": "275",
+            "infractions": [{
+                "libelle": "Test",
+                "elements_constitutifs": [{
+                    "type": "materiel",
+                    "texte": "fait",
+                    "citation": "commet le fait",
+                }],
+                "peines": [{
+                    "type": "principale",
+                    "nature": "emprisonnement",
+                    "quantum_min": 3,
+                    "quantum_max": 3,
+                    "unite_min": "ans",
+                    "unite_max": "mois",
+                    "citation": "un emprisonnement de trois (03) ans à trois (03) mois",
+                }],
+                "peines_renvoi": [],
+                "peines_au_choix": False,
+            }],
+            "conditions": [],
+            "renvois": [],
+        }
+        resultat = verifier(fiche, article(texte=texte), EXISTANTS)
+        self.assertEqual(resultat["statut"], A_REVOIR)
+        self.assertTrue(any("fourchette" in e for e in resultat["erreurs"]))
+
+    def test_unite_absente_de_la_citation(self):
+        texte = ("Est puni d'un emprisonnement de cinq (05) à dix (10) "
+                 "celui qui commet le fait.")
+        fiche = {
+            "article": "275",
+            "infractions": [{
+                "libelle": "Test",
+                "elements_constitutifs": [{
+                    "type": "materiel",
+                    "texte": "fait",
+                    "citation": "commet le fait",
+                }],
+                "peines": [{
+                    "type": "principale",
+                    "nature": "emprisonnement",
+                    "quantum_min": 5,
+                    "quantum_max": 10,
+                    "unite_min": "ans",
+                    "unite_max": "ans",
+                    "citation": "un emprisonnement de cinq (05) à dix (10)",
+                }],
+                "peines_renvoi": [],
+                "peines_au_choix": False,
+            }],
+            "conditions": [],
+            "renvois": [],
+        }
+        resultat = verifier(fiche, article(texte=texte), EXISTANTS)
+        self.assertEqual(resultat["statut"], REJETE)
+        self.assertTrue(any("unité" in e for e in resultat["erreurs"]))
+
+    def test_alternative_mal_employee(self):
+        fiche = fiche_valide()
+        fiche["infractions"][0]["peines"][0]["type"] = "alternative"
+        resultat = verifier(fiche, article(), EXISTANTS)
+        self.assertEqual(resultat["statut"], A_REVOIR)
+        self.assertTrue(any("alternative" in e for e in resultat["erreurs"]))
+
+    def test_peines_au_choix_vrai(self):
+        fiche = fiche_valide()
+        fiche["infractions"][0]["peines_au_choix"] = True
+        texte = TEXTE.replace(
+            "l'article 318.",
+            "l'article 318, ou de l'une de ces deux peines seulement.")
+        resultat = verifier(fiche, article(texte=texte), EXISTANTS)
+        self.assertEqual(resultat["statut"], AUTO_OK)
+
+    def test_peines_au_choix_invente(self):
+        fiche = fiche_valide()
+        fiche["infractions"][0]["peines_au_choix"] = True
+        resultat = verifier(fiche, article(), EXISTANTS)
+        self.assertEqual(resultat["statut"], REJETE)
+        self.assertTrue(any("peines_au_choix" in e for e in resultat["erreurs"]))
 
     def test_unite_fausse(self):
         fiche = fiche_valide()

@@ -21,10 +21,12 @@ def fiche_valide() -> dict:
                 "nature": "emprisonnement",
                 "quantum_min": 5,
                 "quantum_max": 10,
-                "unite": "ans",
+                "unite_min": "ans",
+                "unite_max": "ans",
                 "citation": "de cinq (05) à dix (10) ans",
             }],
             "peines_renvoi": [],
+            "peines_au_choix": False,
         }],
         "conditions": [],
         "renvois": ["318"],
@@ -81,12 +83,33 @@ class TestFiche(unittest.TestCase):
 
     def test_condition_peine(self):
         peine = Peine.model_validate({
-            "type": "alternative",
+            "type": "principale",
             "nature": "mort",
             "condition": "En temps de guerre",
             "citation": "En temps de guerre, la peine est celle de mort.",
         })
         self.assertEqual(peine.condition, "En temps de guerre")
+
+    def test_unites_separees(self):
+        peine = Peine.model_validate({
+            "type": "principale",
+            "nature": "emprisonnement",
+            "quantum_min": 3,
+            "quantum_max": 3,
+            "unite_min": "mois",
+            "unite_max": "ans",
+            "citation": "trois (03) mois à trois (03) ans",
+        })
+        self.assertEqual(peine.unite_min, "mois")
+        self.assertEqual(peine.unite_max, "ans")
+
+    def test_peines_au_choix(self):
+        infraction = Infraction.model_validate({
+            "libelle": "Test",
+            "peines_au_choix": True,
+        })
+        self.assertTrue(infraction.peines_au_choix)
+        self.assertFalse(Infraction.model_validate({"libelle": "Test"}).peines_au_choix)
 
     def test_element_type_inconnu(self):
         with self.assertRaises(ValidationError):
