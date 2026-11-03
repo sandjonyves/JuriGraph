@@ -152,6 +152,8 @@ CREATE FULLTEXT INDEX article_texte
 FOR (a:Article) ON EACH [a.titre, a.texte_complet]
 OPTIONS {indexConfig: {`fulltext.analyzer`: 'french'}};
 ```
+- [ ] Le « titre boosté » se fait dans la requête Lucene (ex. `titre:(termes)^2`), pas dans la définition de l'index.
+- [ ] Test d'acceptation : des requêtes avec et sans accents (ex. « delit » / « délit ») doivent donner des résultats cohérents ; sinon, prévoir de normaliser les accents dans la requête.
 
 ### 2.2 Retrieval (2 jours)
 - [ ] `search_hybrid.py` avec 3 voies :
@@ -164,12 +166,16 @@ OPTIONS {indexConfig: {`fulltext.analyzer`: 'french'}};
 - [ ] Génération de 2 à 4 requêtes par dossier (fait principal, conséquence, circonstances) via règles + LLM.
 
 ### 2.3 Évaluation (2 jours)
-- [ ] Gold set de 30 à 40 scénarios « faits → articles attendus » (avec un juriste si possible).
+- [ ] Gold set de 30 à 40 scénarios « faits → articles attendus ».
+- [ ] Les scénarios sont écrits en langage courant, SANS reprendre les mots de l'article attendu.
+- [ ] Un LLM peut aider à rédiger des brouillons, mais chaque scénario et chaque article attendu doivent être validés par une personne (idéalement un juriste).
+- [ ] Chaque scénario porte un champ `split` : "dev" (pour régler les paramètres) ou "test" (jamais utilisé pour régler).
+- [ ] Chaque scénario a `attendus` (articles indispensables) et `acceptables` (articles également défendables).
 - [ ] Métriques : Recall@5, Recall@10, MRR, nDCG.
 - [ ] Ablations : vectoriel seul / plein texte seul / hybride / hybride + renvois.
 - [ ] Latence cible < 500 ms hors embedding de requête.
 
-**Critère d'acceptation** : Recall@10 ≥ 0,90 sur le gold set, et l'hybride fait mieux que chaque voie seule.
+**Objectif (pas un critère de réussite)** : Recall@10 ≥ 0,90 sur le gold set, et l'hybride fait mieux que chaque voie seule. Avec 30 à 40 scénarios, le rapport donne les effectifs et les chiffres bruts (ex. 33/36), pas seulement un pourcentage.
 
 **Livrables** : `search_hybrid.py`, `data/eval/faits_articles.jsonl`, `evaluate_search.py`, rapport d'ablation.
 
