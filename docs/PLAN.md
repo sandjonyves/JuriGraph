@@ -10,8 +10,8 @@
 | Renvois | 271 dans `renvois.json`, **0 relation `RENVOIE_A` chargée** |
 | Couche LLM | inexistante (seule la couche embeddings existe) |
 | Tests | 19 tests (embeddings) |
-| Volume extraction | 266 articles « emprisonnement », 210 « amende », 44 « mort/à vie », 197 « FCFA » |
-| Taille max d'un article | 3 562 caractères → **1 appel LLM par article suffit** |
+| Volume extraction | 266 articles « emprisonnement », 210 « amende », 44 « mort/à vie », 197 articles contenant le mot "francs" (le mot FCFA n'apparaît jamais dans le texte) |
+| Taille max d'un article | ~3 580 caractères → **1 appel LLM par article suffit** |
 
 Conclusion : les fondations (graphe, embeddings, recherche vectorielle) sont prêtes. Il manque la couche LLM, les nœuds métier, et l'évaluation.
 
@@ -101,13 +101,14 @@ Identifiants : `INF-320-1`, `PEI-320-1`, `ELT-320-1-2`.
   "confiance": 0.0
 }
 ```
-- [ ] Règles du prompt : citation **verbatim obligatoire**, interdiction d'inventer, `null` si incertain, pas de conversion d'unité.
-- [ ] 3 à 5 exemples few-shot (peine simple, fourchette, amende FCFA, mort/à vie, renvoi).
-- [ ] Exclure `abroge`, `est_plage`, articles sans corps (2 articles) et articles structurels (1, 362-370).
+- [ ] Règles du prompt : citation **verbatim obligatoire**, interdiction d'inventer, `null` si incertain, pas de conversion d'unité. L'unité d'un montant est recopiée telle qu'écrite dans le texte ("francs"), sans conversion.
+- [ ] 3 à 5 exemples few-shot (peine simple, fourchette, amende en francs, mort/à vie, renvoi).
+- [ ] Périmètre : 427 articles − 2 exclus (159 abrogé, 362-370 plage) = 425 vectorisés ; − l'article 1 (structurel) = 424 articles à extraire.
 
 ### 1.3 Vérificateur automatique (2 jours) — **cœur de la fiabilité**
 - [ ] Toute citation doit être une **sous-chaîne exacte** de `Article.texte_complet` après normalisation des espaces/apostrophes/tirets.
 - [ ] Tout nombre (quantum, amende) doit apparaître dans la citation ; unité cohérente.
+- [ ] Comparer les nombres après suppression des espaces, y compris insécables (ex. "25 000" = "25000").
 - [ ] `quantum_min <= quantum_max` ; conversion jours/mois/ans pour comparaison ; cas `à vie` / `mort`.
 - [ ] Tout article cité doit exister (`numero` présent en base).
 - [ ] Un même article ne peut pas produire deux infractions identiques.
@@ -115,7 +116,7 @@ Identifiants : `INF-320-1`, `PEI-320-1`, `ELT-320-1-2`.
 - [ ] Tests unitaires sur fixtures : bonne fiche, citation modifiée, chiffre inventé, fourchette inversée, unité fausse.
 
 ### 1.4 Échantillon de relecture humaine (2 jours)
-- [ ] 40 articles stratifiés : peine unique, peines multiples, amende FCFA, mort/à vie, renvois, formulations ambiguës.
+- [ ] 40 articles stratifiés : peine unique, peines multiples, amende en francs, mort/à vie, renvois, formulations ambiguës.
 - [ ] Grille d'annotation : libellé, éléments, nature/quantum de peine, citations.
 - [ ] Mesurer : exactitude des citations, exactitude des peines, complétude des infractions.
 - [ ] Itérer prompt + schéma jusqu'aux seuils.
