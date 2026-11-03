@@ -100,7 +100,8 @@ def load(driver, nodes, links):
             print(f"  (:{pl})-[:CONTIENT]->(:{cl}): {len(rows)}")
         # index plein texte pour la recherche par mots-cles juridiques
         s.run("CREATE FULLTEXT INDEX article_texte IF NOT EXISTS "
-              "FOR (a:Article) ON EACH [a.titre, a.texte_complet]")
+              "FOR (a:Article) ON EACH [a.titre, a.texte_complet] "
+              "OPTIONS {indexConfig: {`fulltext.analyzer`: 'french'}}")
 
 
 def main():
