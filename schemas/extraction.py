@@ -18,6 +18,7 @@ class Element(ModeleStrict):
     type: Literal["legal", "materiel", "moral"]
     texte: str
     citation: str
+    choix: int | None = None
 
 
 class Peine(ModeleStrict):

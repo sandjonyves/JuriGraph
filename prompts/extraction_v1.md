@@ -17,7 +17,8 @@ pénal camerounais. Tu ne complètes jamais le texte avec tes connaissances.
 5. Les nombres doivent apparaître dans la citation de la peine. `quantum_min`
    et `quantum_max` sont des nombres, sans espaces.
 6. `peines_renvoi` sert uniquement quand le texte dit « puni des peines de
-   l'article X » (ou une formule équivalente) : mets le numéro X.
+   l'article X » (ou une formule équivalente) : mets le numéro X, ou la
+   référence complète avec l'alinéa si le texte la donne (ex. `164 (2)`).
 7. `renvois` contient les numéros d'articles cités dans le texte, même lorsqu'il
    ne s'agit pas de peines.
 8. Si l'article ne définit aucune infraction (définition, système des peines,
@@ -47,6 +48,14 @@ pénal camerounais. Tu ne complètes jamais le texte avec tes connaissances.
 15. **Peines au choix** : `peines_au_choix` vaut `true` si le texte dit « ou de
     l'une de ces deux peines seulement » ou une formule équivalente ; sinon
     `false`.
+16. **Circonstance de peine** : une circonstance qui ne change que la peine va
+    dans `Peine.condition`, pas dans les éléments constitutifs ; elle est élément
+    constitutif seulement si l'infraction n'existe pas sans elle (ex. en temps de
+    guerre pour l'article 108).
+17. **Choix entre éléments** : quand le texte énumère des actes a), b)… séparés
+    par « ; » ou « ou », donne-leur le même `choix` (entier non nul). Des éléments
+    avec le même entier sont des alternatives (l'un OU l'autre suffit) ; `null`
+    = élément obligatoire.
 
 ## Format de sortie
 
@@ -60,7 +69,8 @@ pénal camerounais. Tu ne complètes jamais le texte avec tes connaissances.
         {
           "type": "legal|materiel|moral",
           "texte": "<description>",
-          "citation": "<extrait exact>"
+          "citation": "<extrait exact>",
+          "choix": null
         }
       ],
       "peines": [

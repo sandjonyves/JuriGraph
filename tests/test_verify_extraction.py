@@ -10,7 +10,7 @@ TEXTE = (
     "de 25 000 francs celui qui commet un vol. Les peines sont celles de "
     "l'article 318."
 )
-EXISTANTS = {"275", "318"}
+EXISTANTS = {"164", "275", "318"}
 
 
 def article(livre=None, texte=TEXTE):
@@ -231,6 +231,50 @@ class TestVerifier(unittest.TestCase):
         resultat = verifier(fiche, article(), EXISTANTS)
         self.assertEqual(resultat["statut"], REJETE)
         self.assertTrue(any("peines_renvoi" in e for e in resultat["erreurs"]))
+
+    def test_peines_renvoi_alinea_valide(self):
+        texte = ("Est puni des peines de l'article 164 (2) ci-dessus, "
+                 "l'expert judiciaire qui dépose un faux rapport.")
+        fiche = {
+            "article": "165",
+            "infractions": [{
+                "libelle": "Fausse expertise",
+                "elements_constitutifs": [{
+                    "type": "legal",
+                    "texte": "Expert judiciaire",
+                    "citation": "l'expert judiciaire",
+                }],
+                "peines": [],
+                "peines_renvoi": ["164 (2)"],
+            }],
+            "conditions": [],
+            "renvois": ["164"],
+        }
+        resultat = verifier(fiche, article(texte=texte), EXISTANTS)
+        self.assertEqual(resultat["statut"], AUTO_OK)
+
+    def test_peines_renvoi_alinea_invente(self):
+        texte = ("Est puni des peines de l'article 164 (2) ci-dessus, "
+                 "l'expert judiciaire qui dépose un faux rapport.")
+        fiche = {
+            "article": "165",
+            "infractions": [{
+                "libelle": "Fausse expertise",
+                "elements_constitutifs": [{
+                    "type": "legal",
+                    "texte": "Expert judiciaire",
+                    "citation": "l'expert judiciaire",
+                }],
+                "peines": [],
+                "peines_renvoi": ["164 (3)"],
+            }],
+            "conditions": [],
+            "renvois": ["164"],
+        }
+        resultat = verifier(fiche, article(texte=texte), EXISTANTS)
+        self.assertEqual(resultat["statut"], REJETE)
+        self.assertTrue(any("164 (3)" in e and "absent" in e
+                            for e in resultat["erreurs"]))
 
     def test_doublon_infraction(self):
         fiche = fiche_valide()

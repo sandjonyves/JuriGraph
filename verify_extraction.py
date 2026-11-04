@@ -82,6 +82,20 @@ def _contient_numero(texte_normalise: str, numero: str) -> bool:
     return re.search(motif, texte_normalise) is not None
 
 
+def _numero_article(valeur: str) -> str:
+    """Extrait le numéro d'article au début d'un renvoi (ex. '164 (2)' -> '164')."""
+    correspondance = re.match(r"\s*(\d+(?:-\d+)?)", str(valeur))
+    return correspondance.group(1) if correspondance else ""
+
+
+def _contient_renvoi(texte_normalise: str, renvoi_normalise: str,
+                     numero_article: str) -> bool:
+    """Vrai si le renvoi complet, ou son numéro seul, figure dans le texte."""
+    if renvoi_normalise == numero_article:
+        return _contient_numero(texte_normalise, numero_article)
+    return renvoi_normalise in texte_normalise
+
+
 def _est_livre_i(article: dict) -> bool:
     """Vrai si l'article appartient au Livre I."""
     valeur = (article.get("livre") or article.get("livre_numero")
@@ -203,13 +217,15 @@ def verifier(fiche, article: dict, numeros_existants: Iterable[str]) -> dict:
                          f"« {expression} » est absente du texte")
 
         peines_renvoi = infraction.get("peines_renvoi") or []
-        for numero in peines_renvoi:
-            numero = str(numero)
-            if numero not in existants:
-                _ajouter(rejets, f"peines_renvoi {numero} : article inexistant")
-            elif not _contient_numero(texte, numero):
+        for renvoi in peines_renvoi:
+            renvoi_normalise = normaliser(str(renvoi))
+            numero_article = _numero_article(renvoi_normalise)
+            if not numero_article or numero_article not in existants:
                 _ajouter(rejets,
-                         f"peines_renvoi {numero} : absent du texte de l'article")
+                         f"peines_renvoi {renvoi} : article inexistant")
+            elif not _contient_renvoi(texte, renvoi_normalise, numero_article):
+                _ajouter(rejets,
+                         f"peines_renvoi {renvoi} : absent du texte de l'article")
 
         if not peines and not peines_renvoi:
             _ajouter(avertissements,

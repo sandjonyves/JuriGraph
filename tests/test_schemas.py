@@ -111,6 +111,21 @@ class TestFiche(unittest.TestCase):
         self.assertTrue(infraction.peines_au_choix)
         self.assertFalse(Infraction.model_validate({"libelle": "Test"}).peines_au_choix)
 
+    def test_element_choix(self):
+        element = Element.model_validate({
+            "type": "materiel",
+            "texte": "Acte a",
+            "citation": "acte a",
+            "choix": 1,
+        })
+        self.assertEqual(element.choix, 1)
+        obligatoire = Element.model_validate({
+            "type": "materiel",
+            "texte": "Acte obligatoire",
+            "citation": "acte obligatoire",
+        })
+        self.assertIsNone(obligatoire.choix)
+
     def test_element_type_inconnu(self):
         with self.assertRaises(ValidationError):
             Element.model_validate({
