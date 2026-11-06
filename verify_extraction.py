@@ -27,9 +27,10 @@ def normaliser(texte: str) -> str:
 
 
 def _nombres(texte: str) -> list[float]:
-    """Extrait les nombres, en supprimant les espaces entre chiffres."""
+    """Extrait les nombres, en traitant espaces et points de milliers."""
     texte = (texte or "").replace("\u00a0", " ").replace("\u202f", " ")
     texte = re.sub(r"(?<=\d)\s+(?=\d)", "", texte)
+    texte = re.sub(r"(?<=\d)\.(?=\d{3}(?!\d))", "", texte)
     resultat = []
     for valeur in re.findall(r"\d+(?:[.,]\d+)?", texte):
         try:

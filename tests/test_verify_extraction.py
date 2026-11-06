@@ -3,7 +3,7 @@ import copy
 import unittest
 
 from schemas.extraction import Fiche
-from verify_extraction import A_REVOIR, AUTO_OK, REJETE, verifier
+from verify_extraction import A_REVOIR, AUTO_OK, REJETE, _nombres, verifier
 
 TEXTE = (
     "Sera puni d'un emprisonnement de cinq (05) à dix (10) ans et d'une amende "
@@ -56,6 +56,15 @@ def fiche_valide():
         "conditions": [],
         "renvois": ["318"],
     }
+
+
+class TestNombres(unittest.TestCase):
+    def test_point_separateur_milliers(self):
+        self.assertEqual(_nombres("5.000"), [5000.0])
+        self.assertEqual(_nombres("5.000.000"), [5000000.0])
+
+    def test_point_decimal_non_milliers(self):
+        self.assertEqual(_nombres("5.5"), [5.5])
 
 
 class TestVerifier(unittest.TestCase):
@@ -301,6 +310,73 @@ class TestVerifier(unittest.TestCase):
         fiche["infractions"][0]["peines"][1]["citation"] = "une amende de 25\u00a0000 francs"
         resultat = verifier(fiche, article(texte=texte), EXISTANTS)
         self.assertEqual(resultat["statut"], AUTO_OK)
+
+    def test_quantum_point_milliers_accepte(self):
+        texte = ("Est puni d'une amende de 5.000 francs "
+                 "celui qui commet le fait.")
+        fiche = {
+            "article": "275",
+            "infractions": [{
+                "libelle": "Test",
+                "elements_constitutifs": [{
+                    "type": "materiel",
+                    "texte": "fait",
+                    "citation": "commet le fait",
+                }],
+                "peines": [{
+                    "type": "principale",
+                    "nature": "amende",
+                    "quantum_min": 5000,
+                    "quantum_max": 5000,
+                    "unite_min": "francs",
+                    "unite_max": "francs",
+                    "perpetuite": False,
+                    "condition": None,
+                    "citation": "une amende de 5.000 francs",
+                }],
+                "peines_renvoi": [],
+                "peines_au_choix": False,
+            }],
+            "conditions": [],
+            "renvois": [],
+        }
+        resultat = verifier(fiche, article(texte=texte), EXISTANTS)
+        self.assertEqual(resultat["statut"], AUTO_OK)
+        self.assertEqual(resultat["erreurs"], [])
+
+    def test_quantum_point_decimal_non_assimile_a_5500(self):
+        texte = ("Est puni d'une amende de 5.5 francs "
+                 "celui qui commet le fait.")
+        fiche = {
+            "article": "275",
+            "infractions": [{
+                "libelle": "Test",
+                "elements_constitutifs": [{
+                    "type": "materiel",
+                    "texte": "fait",
+                    "citation": "commet le fait",
+                }],
+                "peines": [{
+                    "type": "principale",
+                    "nature": "amende",
+                    "quantum_min": 5500,
+                    "quantum_max": 5500,
+                    "unite_min": "francs",
+                    "unite_max": "francs",
+                    "perpetuite": False,
+                    "condition": None,
+                    "citation": "une amende de 5.5 francs",
+                }],
+                "peines_renvoi": [],
+                "peines_au_choix": False,
+            }],
+            "conditions": [],
+            "renvois": [],
+        }
+        resultat = verifier(fiche, article(texte=texte), EXISTANTS)
+        self.assertEqual(resultat["statut"], REJETE)
+        self.assertTrue(any("quantum_min=5500" in e
+                            for e in resultat["erreurs"]))
 
     def test_condition_peine_valide(self):
         fiche = fiche_valide()

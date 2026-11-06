@@ -7,6 +7,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from extract_infractions import (
+    PROMPT_PATH,
+    PROMPT_VERSION,
     _livres_par_article,
     articles_extractibles,
     charger_articles,
@@ -116,6 +118,11 @@ class TestExtractInfractions(unittest.TestCase):
     def test_selection_run(self):
         articles = [{"numero": "1"}, {"numero": "2"}]
         self.assertEqual(selectionner_articles(articles, run=True), articles)
+
+    def test_prompt_v2_utilise(self):
+        self.assertEqual(PROMPT_VERSION, "extraction_v2")
+        self.assertEqual(PROMPT_PATH.name, "extraction_v2.md")
+        self.assertTrue(PROMPT_PATH.exists())
 
     def test_message_contient_le_texte(self):
         message = construire_message(ARTICLE)
