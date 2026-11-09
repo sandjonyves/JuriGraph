@@ -211,6 +211,39 @@ class TestVerifier(unittest.TestCase):
         self.assertEqual(resultat["statut"], REJETE)
         self.assertTrue(any("peines_au_choix" in e for e in resultat["erreurs"]))
 
+    def test_infraction_sans_peine_a_revoir(self):
+        fiche = {
+            "article": "275",
+            "infractions": [{
+                "libelle": "Test",
+                "elements_constitutifs": [{
+                    "type": "materiel",
+                    "texte": "fait",
+                    "citation": "commet un vol",
+                }],
+                "peines": [],
+                "peines_renvoi": [],
+                "peines_au_choix": False,
+            }],
+            "conditions": [],
+            "renvois": [],
+        }
+        resultat = verifier(fiche, article(), EXISTANTS)
+        self.assertEqual(resultat["statut"], A_REVOIR)
+        self.assertTrue(any("aucune peine" in e
+                            for e in resultat["erreurs"]))
+
+    def test_condition_formule_sans_numero_a_revoir(self):
+        for phrase in ("puni comme faux témoin", "même peine", "mêmes peines"):
+            with self.subTest(phrase=phrase):
+                fiche = fiche_valide()
+                fiche["conditions"] = [phrase]
+                resultat = verifier(
+                    fiche, article(texte=TEXTE + " " + phrase), EXISTANTS)
+                self.assertEqual(resultat["statut"], A_REVOIR)
+                self.assertTrue(any("condition à vérifier" in e
+                                    for e in resultat["erreurs"]))
+
     def test_unite_fausse(self):
         fiche = fiche_valide()
         fiche["infractions"][0]["peines"][1]["citation"] = "une amende de 25 000 FCFA"

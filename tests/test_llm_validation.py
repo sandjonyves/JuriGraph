@@ -98,6 +98,20 @@ class TestGenerateValidated(unittest.TestCase):
         lignes = self._lignes_journal()
         self.assertTrue(lignes[-1]["cache_hit"])
 
+    def test_cache_invalide_si_contenu_prompt_change(self):
+        premier = FauxChat(['{"article": "275", "valeur": 3}'])
+        self._appel(premier, prompt_version="extraction_v3")
+
+        second = FauxChat(['{"article": "275", "valeur": 4}'])
+        resultat = generate_validated(
+            second, "systeme modifie", "utilisateur", FicheTest,
+            cache=self.cache, log_path=self.log,
+            prompt_version="extraction_v3")
+
+        self.assertFalse(resultat.cached)
+        self.assertEqual(resultat.data.valeur, 4)
+        self.assertEqual(len(second.demandes), 1)
+
     def test_ecriture_atomique_sans_tmp(self):
         chat = FauxChat(['{"article": "275", "valeur": 3}'])
         self._appel(chat)

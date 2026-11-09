@@ -14,6 +14,7 @@ REJETE = "rejete"
 
 MOTS_INFRACTION = ("emprisonnement", "amende", "puni")
 UNITES_DUREE = {"ans", "mois", "jours"}
+MOTIFS_CONDITIONS_A_REVOIR = ("puni comme", "même peine", "mêmes peines")
 
 
 def normaliser(texte: str) -> str:
@@ -128,6 +129,13 @@ def verifier(fiche, article: dict, numeros_existants: Iterable[str]) -> dict:
             _ajouter(rejets, f"renvoi {numero} : article inexistant")
         elif not _contient_numero(texte, numero):
             _ajouter(rejets, f"renvoi {numero} : absent du texte de l'article")
+
+    for condition in fiche.get("conditions") or []:
+        condition_normalisee = normaliser(str(condition))
+        if any(motif in condition_normalisee
+               for motif in MOTIFS_CONDITIONS_A_REVOIR):
+            _ajouter(avertissements,
+                     f"condition à vérifier : {str(condition)!r}")
 
     infractions = fiche.get("infractions") or []
     libelles: set[str] = set()

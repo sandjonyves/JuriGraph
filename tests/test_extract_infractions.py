@@ -119,9 +119,9 @@ class TestExtractInfractions(unittest.TestCase):
         articles = [{"numero": "1"}, {"numero": "2"}]
         self.assertEqual(selectionner_articles(articles, run=True), articles)
 
-    def test_prompt_v2_utilise(self):
-        self.assertEqual(PROMPT_VERSION, "extraction_v2")
-        self.assertEqual(PROMPT_PATH.name, "extraction_v2.md")
+    def test_prompt_v3_utilise(self):
+        self.assertEqual(PROMPT_VERSION, "extraction_v3")
+        self.assertEqual(PROMPT_PATH.name, "extraction_v3.md")
         self.assertTrue(PROMPT_PATH.exists())
 
     def test_message_contient_le_texte(self):
