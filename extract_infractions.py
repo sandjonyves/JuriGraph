@@ -12,6 +12,7 @@ Usage :
     python extract_infractions.py --numero 275
     python extract_infractions.py --limit 5
     python extract_infractions.py --run          # tous les articles extractibles
+    python extract_infractions.py --reverifier --run extraction_v4
 
 ``--dry-run`` ne fait aucun appel API et n'écrit rien. Sans ``--dry-run``,
 ``--numero`` ou ``--limit`` lance une extraction réelle ; ``--run`` lance le
@@ -49,6 +50,7 @@ CORPUS_PATH = RACINE / "code_penal_structure_docx.json"
 PROMPT_PATH = RACINE / "prompts/extraction_v4.md"
 CACHE_PATH = RACINE / "data/cache/llm_cache.json"
 LOG_PATH = RACINE / "data/logs/llm_runs.jsonl"
+EXTRACTIONS_DIR = RACINE / "data/extractions"
 PROMPT_VERSION = "extraction_v4"
 
 
@@ -182,25 +184,113 @@ def afficher_fiche(fiche: Fiche, verification: dict, cache_hit: bool = False) ->
     print(json.dumps(fiche.model_dump(mode="json"), ensure_ascii=False, indent=2))
 
 
+def _chemin_run(nom: str) -> Path:
+    """Retourne le chemin d'un fichier de run JSONL existant."""
+    chemin = Path(nom)
+    if chemin.is_file():
+        return chemin
+    candidat = EXTRACTIONS_DIR / f"{nom}.jsonl"
+    if candidat.is_file():
+        return candidat
+    raise ValueError(
+        f"run {nom!r} introuvable : indiquez un chemin existant ou placez "
+        f"le fichier dans {EXTRACTIONS_DIR}/<nom>.jsonl."
+    )
+
+
+def _lire_fiches_run(chemin: Path) -> list[dict]:
+    """Lit un run JSONL de fiches, en ignorant les métadonnées de statut."""
+    fiches = []
+    for ligne in chemin.read_text(encoding="utf-8").splitlines():
+        if not ligne.strip():
+            continue
+        valeur = json.loads(ligne)
+        if not isinstance(valeur, dict):
+            raise ValueError(f"ligne de run invalide dans {chemin} : {ligne!r}")
+        fiche = dict(valeur.get("fiche") or valeur)
+        fiche.pop("statut", None)
+        fiche.pop("erreurs", None)
+        fiches.append(fiche)
+    if not fiches:
+        raise ValueError(f"run vide : {chemin}")
+    return fiches
+
+
+def _ecrire_fiches_run(chemin: Path, fiches: list[dict]) -> None:
+    """Réécrit un run JSONL de façon atomique avec les statuts à jour."""
+    temporaire = chemin.with_name(chemin.name + ".tmp")
+    with open(temporaire, "w", encoding="utf-8") as fichier:
+        for fiche in fiches:
+            fichier.write(json.dumps(fiche, ensure_ascii=False) + "\n")
+    os.replace(temporaire, chemin)
+
+
+def reverifier_run(nom: str) -> dict:
+    """Rejoue le vérificateur sur un run existant, sans aucun appel réseau."""
+    chemin = _chemin_run(nom)
+    fiches = _lire_fiches_run(chemin)
+    articles, existants = charger_articles()
+    par_numero = {str(article["numero"]): article for article in articles}
+    statuts: dict[str, int] = {}
+
+    for fiche in fiches:
+        numero = str(fiche.get("article") or "")
+        article = par_numero.get(numero)
+        if article is None:
+            raise ValueError(f"article {numero!r} introuvable dans le corpus")
+        Fiche.model_validate(fiche)
+        verification = verifier(fiche, article, existants)
+        fiche["statut"] = verification["statut"]
+        fiche["erreurs"] = verification["erreurs"]
+        statut = verification["statut"]
+        statuts[statut] = statuts.get(statut, 0) + 1
+        print(f"Article {numero} : {statut}")
+        for erreur in verification["erreurs"]:
+            print(f"  - {erreur}")
+
+    _ecrire_fiches_run(chemin, fiches)
+    print(f"\nRésumé : {len(fiches)} fiche(s) revérifiée(s) dans {chemin}.")
+    for statut in sorted(statuts):
+        print(f"  {statut} : {statuts[statut]}")
+    return {"fichier": str(chemin), "statuts": statuts}
+
+
 def main() -> int:
     """Point d'entrée : dry-run, sélection partielle ou corpus complet."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true",
                         help="aucun appel API, aucune écriture")
+    parser.add_argument("--reverifier", action="store_true",
+                        help="rejouer le vérificateur sur un run existant, sans réseau")
     choix = parser.add_mutually_exclusive_group()
     choix.add_argument("--numero", help="extraire un seul article")
     choix.add_argument("--limit", type=int,
                        help="extraire les N premiers articles")
-    choix.add_argument("--run", action="store_true",
-                       help="extraire tous les articles extractibles")
+    choix.add_argument("--run", nargs="?", const=True, default=None,
+                       help="extraire tout le corpus, ou nommer le run avec --reverifier")
     args = parser.parse_args()
+
+    if args.reverifier:
+        if args.dry_run or args.numero is not None or args.limit is not None:
+            parser.error("--reverifier est incompatible avec --dry-run, --numero et --limit.")
+        if not isinstance(args.run, str):
+            parser.error("--reverifier exige --run NOM.")
+        try:
+            reverifier_run(args.run)
+        except (ValueError, OSError, json.JSONDecodeError) as exc:
+            parser.error(str(exc))
+        return 0
+
+    if isinstance(args.run, str):
+        parser.error("--run NOM n'est valide qu'avec --reverifier.")
 
     articles, existants = charger_articles()
     extractibles = articles_extractibles(articles)
 
     try:
         selection = selectionner_articles(
-            extractibles, numero=args.numero, limit=args.limit, run=args.run)
+            extractibles, numero=args.numero, limit=args.limit,
+            run=args.run is True)
     except ValueError as exc:
         parser.error(str(exc))
 
@@ -213,7 +303,7 @@ def main() -> int:
         if not selection:
             print("Aucune sélection : utilisez --numero, --limit ou --run.")
             return 0
-        if args.run:
+        if args.run is True:
             numeros = [str(article["numero"]) for article in selection]
             print(f"{len(selection)} articles seraient traités (--run).")
             print("Premiers numéros : " + ", ".join(numeros[:12]))

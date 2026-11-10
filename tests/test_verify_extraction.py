@@ -244,6 +244,47 @@ class TestVerifier(unittest.TestCase):
                 self.assertTrue(any("condition à vérifier" in e
                                     for e in resultat["erreurs"]))
 
+    def test_choix_isole_a_revoir(self):
+        fiche = fiche_valide()
+        fiche["infractions"][0]["elements_constitutifs"][0]["choix"] = 1
+        resultat = verifier(fiche, article(), EXISTANTS)
+        self.assertEqual(resultat["statut"], A_REVOIR)
+        self.assertTrue(any("choix 1 utilisé par un seul élément" in e
+                            for e in resultat["erreurs"]))
+
+    def test_deux_elements_meme_choix_ok(self):
+        fiche = fiche_valide()
+        fiche["infractions"][0]["elements_constitutifs"][0]["choix"] = 1
+        fiche["infractions"][0]["elements_constitutifs"].append({
+            "type": "materiel",
+            "texte": "vol",
+            "citation": "un vol",
+            "choix": 1,
+        })
+        resultat = verifier(fiche, article(), EXISTANTS)
+        self.assertEqual(resultat["statut"], AUTO_OK)
+
+    def test_condition_avec_renvoi_a_revoir(self):
+        for condition in ("l'article 227", "les articles 227 et 228"):
+            with self.subTest(condition=condition):
+                texte = TEXTE + " " + condition + " provoque la mort."
+                fiche = fiche_valide()
+                fiche["infractions"][0]["peines"][0]["condition"] = condition
+                resultat = verifier(fiche, article(texte=texte), EXISTANTS)
+                self.assertEqual(resultat["statut"], A_REVOIR)
+                self.assertIn(
+                    "condition renvoyant à d'autres articles : "
+                    "possible infraction distincte",
+                    resultat["erreurs"],
+                )
+
+    def test_condition_sans_renvoi_inchangee(self):
+        texte = TEXTE + " en cas de récidive."
+        fiche = fiche_valide()
+        fiche["infractions"][0]["peines"][0]["condition"] = "en cas de récidive"
+        resultat = verifier(fiche, article(texte=texte), EXISTANTS)
+        self.assertEqual(resultat["statut"], AUTO_OK)
+
     def test_unite_fausse(self):
         fiche = fiche_valide()
         fiche["infractions"][0]["peines"][1]["citation"] = "une amende de 25 000 FCFA"

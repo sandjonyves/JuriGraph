@@ -15,6 +15,7 @@ REJETE = "rejete"
 MOTS_INFRACTION = ("emprisonnement", "amende", "puni")
 UNITES_DUREE = {"ans", "mois", "jours"}
 MOTIFS_CONDITIONS_A_REVOIR = ("puni comme", "même peine", "mêmes peines")
+MOTIF_CONDITION_RENVOI = re.compile(r"\barticles?\s+\d", re.IGNORECASE)
 
 
 def normaliser(texte: str) -> str:
@@ -150,12 +151,23 @@ def verifier(fiche, article: dict, numeros_existants: Iterable[str]) -> dict:
         else:
             libelles.add(libelle_normalise)
 
+        choix_utilises: dict[int, int] = {}
         for element in infraction.get("elements_constitutifs") or []:
             citation = str(element.get("citation") or "")
             if not citation.strip():
                 _ajouter(rejets, f"{libelle} : citation d'élément vide")
             elif normaliser(citation) not in texte:
                 _ajouter(rejets, f"{libelle} : citation d'élément absente du texte")
+            choix = element.get("choix")
+            if choix is not None:
+                choix_utilises[int(choix)] = choix_utilises.get(int(choix), 0) + 1
+
+        for choix, nombre in choix_utilises.items():
+            if nombre == 1:
+                _ajouter(
+                    avertissements,
+                    f"{libelle} : choix {choix} utilisé par un seul élément",
+                )
 
         peines = infraction.get("peines") or []
         for peine in peines:
@@ -169,11 +181,18 @@ def verifier(fiche, article: dict, numeros_existants: Iterable[str]) -> dict:
             condition = peine.get("condition")
             if condition is not None:
                 condition_texte = str(condition)
+                condition_normalisee = normaliser(condition_texte)
                 if not condition_texte.strip():
                     _ajouter(rejets, f"{libelle} : condition de peine vide")
-                elif normaliser(condition_texte) not in texte:
+                elif condition_normalisee not in texte:
                     _ajouter(rejets,
                              f"{libelle} : condition de peine absente du texte")
+                if MOTIF_CONDITION_RENVOI.search(condition_normalisee):
+                    _ajouter(
+                        avertissements,
+                        "condition renvoyant à d'autres articles : "
+                        "possible infraction distincte",
+                    )
 
             nombres = _nombres(citation)
             for champ, champ_unite in (("quantum_min", "unite_min"),

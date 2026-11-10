@@ -15,6 +15,7 @@ from extract_infractions import (
     charger_articles,
     construire_message,
     extraire_article,
+    main,
     selectionner_articles,
     verifier_configuration_llm,
 )
@@ -177,6 +178,60 @@ class TestExtractInfractions(unittest.TestCase):
         self.assertIn("275", existants)
         article = next(a for a in articles if a["numero"] == "275")
         self.assertEqual(article["livre"], "II")
+
+    def test_reverifier_sans_reseau(self):
+        fiche = {
+            "article": "275",
+            "infractions": [{
+                "libelle": "Meurtre",
+                "elements_constitutifs": [{
+                    "type": "materiel",
+                    "texte": "cause la mort d'autrui",
+                    "citation": "cause la mort d'autrui",
+                    "choix": 1,
+                }],
+                "peines": [{
+                    "type": "principale",
+                    "nature": "emprisonnement",
+                    "quantum_min": None,
+                    "quantum_max": None,
+                    "unite_min": None,
+                    "unite_max": None,
+                    "perpetuite": True,
+                    "condition": None,
+                    "citation": "l'emprisonnement à vie",
+                }],
+                "peines_renvoi": [],
+                "peines_au_choix": False,
+            }],
+            "conditions": [],
+            "renvois": [],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            chemin = Path(tmp) / "run.jsonl"
+            chemin.write_text(
+                json.dumps(fiche, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+            with patch("sys.argv", [
+                "extract_infractions.py",
+                "--reverifier",
+                "--run",
+                str(chemin),
+            ]):
+                with patch(
+                    "extract_infractions.create_chat",
+                    side_effect=AssertionError("appel réseau interdit"),
+                ):
+                    code = main()
+
+            self.assertEqual(code, 0)
+            resultat = json.loads(
+                chemin.read_text(encoding="utf-8").splitlines()[0]
+            )
+            self.assertEqual(resultat["statut"], "a_revoir")
+            self.assertTrue(any("choix 1" in e
+                                for e in resultat["erreurs"]))
 
 
 if __name__ == "__main__":
