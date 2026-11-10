@@ -1,4 +1,5 @@
 """Tests de l'extracteur d'infractions, sans appel réseau."""
+import hashlib
 import json
 import os
 import tempfile
@@ -119,10 +120,16 @@ class TestExtractInfractions(unittest.TestCase):
         articles = [{"numero": "1"}, {"numero": "2"}]
         self.assertEqual(selectionner_articles(articles, run=True), articles)
 
-    def test_prompt_v3_utilise(self):
-        self.assertEqual(PROMPT_VERSION, "extraction_v3")
-        self.assertEqual(PROMPT_PATH.name, "extraction_v3.md")
+    def test_prompt_v4_utilise(self):
+        self.assertEqual(PROMPT_VERSION, "extraction_v4")
+        self.assertEqual(PROMPT_PATH.name, "extraction_v4.md")
         self.assertTrue(PROMPT_PATH.exists())
+        v3 = PROMPT_PATH.with_name("extraction_v3.md")
+        self.assertTrue(v3.exists())
+        self.assertNotEqual(
+            hashlib.sha256(PROMPT_PATH.read_bytes()).hexdigest(),
+            hashlib.sha256(v3.read_bytes()).hexdigest(),
+        )
 
     def test_message_contient_le_texte(self):
         message = construire_message(ARTICLE)

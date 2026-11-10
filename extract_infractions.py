@@ -46,10 +46,10 @@ from schemas.extraction import Fiche  # noqa: E402
 from verify_extraction import verifier  # noqa: E402
 
 CORPUS_PATH = RACINE / "code_penal_structure_docx.json"
-PROMPT_PATH = RACINE / "prompts/extraction_v3.md"
+PROMPT_PATH = RACINE / "prompts/extraction_v4.md"
 CACHE_PATH = RACINE / "data/cache/llm_cache.json"
 LOG_PATH = RACINE / "data/logs/llm_runs.jsonl"
-PROMPT_VERSION = "extraction_v3"
+PROMPT_VERSION = "extraction_v4"
 
 
 def _livres_par_article(data: dict) -> dict[str, str]:
