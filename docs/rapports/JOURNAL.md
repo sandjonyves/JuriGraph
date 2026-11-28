@@ -19,5 +19,21 @@ Notes datées : ce qui est fait, chiffres, difficultés, et **ce que l'utilisate
 - Renvois en base : 271/271, identiques à `renvois.json`. Index plein texte : déjà en `french`.
 - Aucune écriture dans Neo4j n'a été nécessaire. Rapport : `docs/rapports/R2_etape5_graphe.md`.
 
+### Étape 8 — terminée (résultats PROVISOIRES)
+- 45 scénarios en brouillon (`data/eval/faits_articles.jsonl`), recouvrement lexical médian 0,09.
+- `search_hybrid.py` (V, PT, renvois, voisins, RRF pondérée) et `evaluate_search.py` (11 ablations,
+  réglage sur dev, bootstrap, permutation).
+- Résultat : **la voie vectorielle seule est la meilleure** (test : R@10 = 0,857, 18/21 ; MRR = 0,648).
+  Plein texte et graphe n'apportent rien de significatif ; à poids égal ils dégradent le classement.
+- Le test a été consulté une fois avant la 2ᵉ itération (documenté dans R4 § 2.3).
+- Échecs typiques : article 318 (3 infractions dans un seul vecteur), tentative/complicité (0/2).
+- Rapport : `docs/rapports/R4_etape8_recherche.md`. Coût : 0 $.
+
 ### À relire par l'utilisateur
-- (rien pour l'étape 5)
+1. **Les 45 scénarios** : `data/eval/grille_relecture_scenarios.csv` (garder / modifier / rejeter,
+   articles attendus corrigés). Indispensable avant de citer les chiffres de R4.
+2. Le rapport R4, en particulier les décisions du § 6 (V seule par défaut, graphe pour enrichir).
+
+### En attente (hors étapes 5 et 8)
+- Crédits OpenRouter + `LLM_PROVIDER` / `LLM_MODEL` dans `.env` pour l'extraction avec DeepSeek V4.1 Flash.
+- Date de dépôt du mémoire.

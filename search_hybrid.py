@@ -59,6 +59,7 @@ class Config:
     profondeur: int = 20
     graines: int = 5
     k_rrf: int = 60
+    poids_plein_texte: float = 1.0
     poids_graphe: float = 0.5
     max_voisins: int = 10
 
@@ -256,7 +257,8 @@ class RechercheHybride:
                 listes.append((f"vecteur{suffixe}", self.voie_vecteur(requete, config.profondeur), 1.0))
             if config.plein_texte:
                 listes.append((f"plein_texte{suffixe}",
-                               self.voie_plein_texte(requete, config.profondeur), 1.0))
+                               self.voie_plein_texte(requete, config.profondeur),
+                               config.poids_plein_texte))
         base = fusion_rrf(listes, config.k_rrf)
         graines = [r.numero for r in base[:config.graines]]
         if config.renvois:

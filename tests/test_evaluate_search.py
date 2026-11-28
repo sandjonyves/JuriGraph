@@ -3,9 +3,11 @@ import math
 import unittest
 
 from evaluate_search import (
+    ABLATIONS,
     agreger,
     bootstrap,
     choisir_meilleur,
+    grille_utile,
     ndcg,
     permutation_appariee,
     rang_reciproque,
@@ -77,6 +79,18 @@ class TestStatistiques(unittest.TestCase):
         res = {"A": {"R@10": 0.8, "MRR": 0.5}, "B": {"R@10": 0.8, "MRR": 0.6},
                "C": {"R@10": 0.7, "MRR": 0.9}}
         self.assertEqual(choisir_meilleur(res), "B")
+
+    def test_grille_utile_vecteur_seul(self):
+        """Sans plein texte ni graphe, seuls k_rrf et la profondeur varient."""
+        grille = grille_utile(ABLATIONS["V"])
+        self.assertEqual(len(grille["poids_plein_texte"]), 1)
+        self.assertEqual(len(grille["poids_graphe"]), 1)
+
+    def test_grille_utile_hybride(self):
+        """Configuration complète : tous les poids varient."""
+        grille = grille_utile(ABLATIONS["V+PT+R+S"])
+        self.assertGreater(len(grille["poids_plein_texte"]), 1)
+        self.assertGreater(len(grille["poids_graphe"]), 1)
 
 
 if __name__ == "__main__":

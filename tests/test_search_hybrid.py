@@ -128,6 +128,12 @@ class TestMoteur(unittest.TestCase):
         res = self.moteur.rechercher("faits", k=10, config=Config(graines=2, section=False))
         self.assertTrue(all("renvoi" not in r.sources for r in res if r.numero in ("1", "2")))
 
+    def test_poids_plein_texte_nul(self):
+        """Un poids nul rend la voie plein texte sans effet sur l'ordre."""
+        cfg = Config(renvois=False, section=False, poids_plein_texte=0.0)
+        res = self.moteur.rechercher("faits", k=10, config=cfg)
+        self.assertEqual([r.numero for r in res][:3], ["2", "1", "3"])
+
     def test_sans_embedding(self):
         """Sans modèle d'embedding, la voie vectorielle échoue clairement."""
         moteur = RechercheHybride(self.neo, None)

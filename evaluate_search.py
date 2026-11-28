@@ -43,10 +43,15 @@ ABLATIONS = {
     "V+PT+R": Config(section=False),
     "V+PT+S": Config(renvois=False),
     "V+PT+R+S": Config(),
+    "V+R": Config(plein_texte=False, section=False),
+    "V+S": Config(plein_texte=False, renvois=False),
+    "V+R+S": Config(plein_texte=False),
     "V+PT+MQ": Config(renvois=False, section=False, multi_requetes=True),
     "V+PT+R+S+MQ": Config(multi_requetes=True),
 }
-GRILLE = {"k_rrf": [10, 30, 60], "poids_graphe": [0.25, 0.5, 1.0], "profondeur": [10, 20, 30]}
+GRILLE = {"k_rrf": [10, 30, 60], "poids_plein_texte": [0.1, 0.25, 0.5, 1.0],
+          "poids_graphe": [0.1, 0.25, 0.5], "profondeur": [20]}
+A_REGLER = ["V+PT+R+S", "V+PT", "V+R+S"]
 
 
 # --------------------------------------------------------------- métriques
@@ -151,17 +156,26 @@ def prechauffer(moteur, scenarios: list[dict]) -> None:
     print()
 
 
+def grille_utile(base: Config) -> dict[str, list]:
+    """Ne fait varier que les paramètres qui ont un effet sur la configuration."""
+    grille = dict(GRILLE)
+    if not base.plein_texte:
+        grille["poids_plein_texte"] = [base.poids_plein_texte]
+    if not (base.renvois or base.section):
+        grille["poids_graphe"] = [base.poids_graphe]
+    return grille
+
+
 def regler(moteur, dev: list[dict], base: Config) -> tuple[Config, list[dict]]:
     """Recherche en grille sur le split dev ; renvoie la meilleure configuration."""
-    essais = []
-    for k_rrf, poids, prof in itertools.product(*GRILLE.values()):
-        cfg = replace(base, k_rrf=k_rrf, poids_graphe=poids, profondeur=prof)
-        lignes, _ = evaluer(moteur, dev, cfg)
-        essais.append({"k_rrf": k_rrf, "poids_graphe": poids, "profondeur": prof, **agreger(lignes)})
-    meilleur = min(essais, key=lambda e: (-e["R@10"], -e["MRR"], e["k_rrf"], e["poids_graphe"],
-                                          e["profondeur"]))
-    return replace(base, k_rrf=meilleur["k_rrf"], poids_graphe=meilleur["poids_graphe"],
-                   profondeur=meilleur["profondeur"]), essais
+    grille, essais = grille_utile(base), []
+    for valeurs in itertools.product(*grille.values()):
+        parametres = dict(zip(grille, valeurs))
+        lignes, _ = evaluer(moteur, dev, replace(base, **parametres))
+        essais.append({**parametres, **agreger(lignes)})
+    meilleur = min(essais, key=lambda e: (-e["R@10"], -e["MRR"], -e["nDCG@10"],
+                                          *(e[c] for c in grille)))
+    return replace(base, **{c: meilleur[c] for c in grille}), essais
 
 
 def tableau(titre: str, resultats: dict[str, dict], n: int) -> list[str]:
@@ -233,23 +247,27 @@ def main() -> int:
               *tableau("Ablations — test", res_test, len(test))]
 
         if not args.sans_reglage:
-            meilleure = choisir_meilleur(res_dev)
-            cfg_reglee, essais = regler(moteur, dev, ABLATIONS[meilleure])
-            res_final, det_final = serie(moteur, test, {"V": ABLATIONS["V"],
-                                                        f"{meilleure} (défaut)": ABLATIONS[meilleure],
-                                                        f"{meilleure} (réglée)": cfg_reglee})
-            rapport["reglage"] = {"base": meilleure, "config": asdict(cfg_reglee), "essais": essais,
-                                  "test": res_final, "details_test": det_final}
-            md += [f"## Réglage sur dev de « {meilleure} »", "",
-                   (f"Meilleurs paramètres : k_rrf = {cfg_reglee.k_rrf}, poids_graphe = "
-                    f"{cfg_reglee.poids_graphe}, profondeur = {cfg_reglee.profondeur}"), "",
+            finales: dict[str, Config] = {"V": ABLATIONS["V"]}
+            rapport["reglage"] = {}
+            md += ["## Réglage sur dev (grille)", "", f"Grille : {GRILLE}", ""]
+            for nom in A_REGLER:
+                cfg, essais = regler(moteur, dev, ABLATIONS[nom])
+                rapport["reglage"][nom] = {"config": asdict(cfg), "essais": essais}
+                finales[f"{nom} (réglée)"] = cfg
+                md.append(f"- {nom} : k_rrf = {cfg.k_rrf}, poids_plein_texte = "
+                          f"{cfg.poids_plein_texte}, poids_graphe = {cfg.poids_graphe}, "
+                          f"profondeur = {cfg.profondeur}")
+            res_dev_f, _ = serie(moteur, dev, finales)
+            res_final, det_final = serie(moteur, test, finales)
+            rapport["final"] = {"dev": res_dev_f, "test": res_final, "details_test": det_final}
+            md += ["", *tableau("Configurations réglées — dev", res_dev_f, len(dev)),
                    *tableau("Mesure finale — test", res_final, len(test))]
     finally:
         driver.close()
 
     SORTIE.mkdir(parents=True, exist_ok=True)
     (SORTIE / "eval_recherche.json").write_text(
-        json.dumps(rapport, ensure_ascii=False, indent=1), encoding="utf-8")
+        json.dumps(rapport, ensure_ascii=False), encoding="utf-8")
     (SORTIE / "eval_recherche.md").write_text("\n".join(md), encoding="utf-8")
     print("\n".join(md))
     print(f"Résultats : {SORTIE / 'eval_recherche.json'}")
