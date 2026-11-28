@@ -16,6 +16,40 @@ MOTS_INFRACTION = ("emprisonnement", "amende", "puni")
 UNITES_DUREE = {"ans", "mois", "jours"}
 MOTIFS_CONDITIONS_A_REVOIR = ("puni comme", "même peine", "mêmes peines")
 MOTIF_CONDITION_RENVOI = re.compile(r"\barticles?\s+\d", re.IGNORECASE)
+MOTIF_RENVOI_PEINE = re.compile(
+    r"\bpeines?\b[^.]{0,80}\b(?:de|des|à|aux|auxdits)\s+"
+    r"(?:l'article|articles?)\b"
+    r"|\bpeines?\b[^.]{0,80}\b(?:est|sont)\s+celles?\b[^.]{0,80}\b"
+    r"(?:de|à)\s+l'article\b",
+    re.IGNORECASE,
+)
+MOTIF_INFRACTION_BASE = re.compile(
+    r"\binfractions?\b.{0,120}\barticles?\s+\d",
+    re.IGNORECASE,
+)
+MOTIF_RESULTAT_DIFFERENT = re.compile(
+    r"\b(?:provoque(?:nt)?|provoqué(?:e|es|s)?|"
+    r"cause(?:nt)?|causé(?:e|es|s)?|"
+    r"entra[iî]ne(?:nt)?|entra[iî]né(?:e|es|s)?|"
+    r"occasionne(?:nt)?|occasionné(?:e|es|s)?|"
+    r"abouti(?:t|ssent)|résulte(?:nt)?|suivi(?:e|es|s)?)\b",
+    re.IGNORECASE,
+)
+MESSAGE_INFRACTION_DISTINCTE = (
+    "condition renvoyant à d'autres articles : possible infraction distincte"
+)
+MESSAGE_RENVOI_PEINE = (
+    "condition renvoyant aux peines d'autres articles : possible renvoi de peine"
+)
+MESSAGE_CONDITION_INCOMPLETE = (
+    "condition de peine possiblement incomplète : dépendance à une autre "
+    "condition non reprise"
+)
+MOTIF_CONDITION_SUBORDONNEE = re.compile(r"^en cas d", re.IGNORECASE)
+MOTIF_CONDITION_CONTEXTE = re.compile(
+    r"\b(?:si|au cas où|lorsque|dans le cas où)\b",
+    re.IGNORECASE,
+)
 
 
 def normaliser(texte: str) -> str:
@@ -114,6 +148,83 @@ def _ajouter(liste: list[str], message: str) -> None:
         liste.append(message)
 
 
+def _est_reference_infraction_de_base(condition_normalisee: str) -> bool:
+    """Vrai si la condition cite une infraction de base sans résultat distinct."""
+    return (
+        MOTIF_INFRACTION_BASE.search(condition_normalisee) is not None
+        and MOTIF_RESULTAT_DIFFERENT.search(condition_normalisee) is None
+    )
+
+
+def _controler_condition(condition: str, avertissements: list[str]) -> None:
+    """Classe une condition et ajoute les avertissements adaptés."""
+    condition_normalisee = normaliser(str(condition))
+    if any(motif in condition_normalisee for motif in MOTIFS_CONDITIONS_A_REVOIR):
+        _ajouter(avertissements, f"condition à vérifier : {str(condition)!r}")
+
+    renvoi_peine = MOTIF_RENVOI_PEINE.search(condition_normalisee) is not None
+    if renvoi_peine:
+        _ajouter(avertissements, MESSAGE_RENVOI_PEINE)
+
+    if (
+        not renvoi_peine
+        and MOTIF_CONDITION_RENVOI.search(condition_normalisee) is not None
+        and not _est_reference_infraction_de_base(condition_normalisee)
+    ):
+        _ajouter(avertissements, MESSAGE_INFRACTION_DISTINCTE)
+
+
+def _phrases(texte_normalise: str) -> list[str]:
+    """Découpe un texte normalisé en phrases simples."""
+    return [
+        phrase.strip()
+        for phrase in re.split(r"(?<=[.!?])\s+", texte_normalise)
+        if phrase.strip()
+    ]
+
+
+def _condition_dependante_incomplete(
+    condition: str,
+    autres_conditions: list[str],
+    texte_normalise: str,
+) -> bool:
+    """Vrai si une sous-condition ne reprend pas une condition précédente."""
+    condition_normalisee = normaliser(str(condition))
+    if not MOTIF_CONDITION_SUBORDONNEE.search(condition_normalisee):
+        return False
+
+    phrases = _phrases(texte_normalise)
+    index = next(
+        (i for i, phrase in enumerate(phrases) if condition_normalisee in phrase),
+        None,
+    )
+    if index is None:
+        return False
+
+    phrase = phrases[index]
+    for autre in autres_conditions:
+        autre_normalisee = normaliser(str(autre))
+        if not autre_normalisee or autre_normalisee == condition_normalisee:
+            continue
+
+        if autre_normalisee in phrase:
+            position_autre = phrase.find(autre_normalisee)
+            position_condition = phrase.find(condition_normalisee)
+            if position_autre >= position_condition:
+                continue
+            between = phrase[
+                position_autre + len(autre_normalisee):position_condition
+            ]
+            connecteur = re.search(r"\b(et|ou)\b[^a-z0-9]*$", between)
+            if connecteur and connecteur.group(1) == "et":
+                return True
+        elif index > 0 and autre_normalisee in phrases[index - 1]:
+            if MOTIF_CONDITION_CONTEXTE.search(phrases[index - 1]):
+                return True
+
+    return False
+
+
 def verifier(fiche, article: dict, numeros_existants: Iterable[str]) -> dict:
     """Vérifie une fiche et retourne {statut, erreurs}."""
     if hasattr(fiche, "model_dump"):
@@ -132,11 +243,7 @@ def verifier(fiche, article: dict, numeros_existants: Iterable[str]) -> dict:
             _ajouter(rejets, f"renvoi {numero} : absent du texte de l'article")
 
     for condition in fiche.get("conditions") or []:
-        condition_normalisee = normaliser(str(condition))
-        if any(motif in condition_normalisee
-               for motif in MOTIFS_CONDITIONS_A_REVOIR):
-            _ajouter(avertissements,
-                     f"condition à vérifier : {str(condition)!r}")
+        _controler_condition(condition, avertissements)
 
     infractions = fiche.get("infractions") or []
     libelles: set[str] = set()
@@ -150,6 +257,9 @@ def verifier(fiche, article: dict, numeros_existants: Iterable[str]) -> dict:
             _ajouter(avertissements, f"infraction en double : {libelle!r}")
         else:
             libelles.add(libelle_normalise)
+
+        for condition in infraction.get("conditions") or []:
+            _controler_condition(condition, avertissements)
 
         choix_utilises: dict[int, int] = {}
         for element in infraction.get("elements_constitutifs") or []:
@@ -170,6 +280,11 @@ def verifier(fiche, article: dict, numeros_existants: Iterable[str]) -> dict:
                 )
 
         peines = infraction.get("peines") or []
+        conditions_peines = [
+            str(peine.get("condition"))
+            for peine in peines
+            if peine.get("condition")
+        ]
         for peine in peines:
             citation = str(peine.get("citation") or "")
             citation_norm = normaliser(citation)
@@ -187,12 +302,15 @@ def verifier(fiche, article: dict, numeros_existants: Iterable[str]) -> dict:
                 elif condition_normalisee not in texte:
                     _ajouter(rejets,
                              f"{libelle} : condition de peine absente du texte")
-                if MOTIF_CONDITION_RENVOI.search(condition_normalisee):
-                    _ajouter(
-                        avertissements,
-                        "condition renvoyant à d'autres articles : "
-                        "possible infraction distincte",
-                    )
+                if condition_texte.strip():
+                    _controler_condition(condition_texte, avertissements)
+                    if _condition_dependante_incomplete(
+                        condition_texte, conditions_peines, texte
+                    ):
+                        _ajouter(
+                            avertissements,
+                            f"{libelle} : {MESSAGE_CONDITION_INCOMPLETE}",
+                        )
 
             nombres = _nombres(citation)
             for champ, champ_unite in (("quantum_min", "unite_min"),
