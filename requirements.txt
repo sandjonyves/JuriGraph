@@ -4,3 +4,5 @@ pydantic>=2
 # Fournisseur par défaut (Gemini). Inutile si vous utilisez un serveur
 # local compatible OpenAI (Ollama, vLLM, LM Studio...).
 google-genai>=1.0.0
+# Export des statistiques vers Excel (graphiques natifs).
+openpyxl>=3.1

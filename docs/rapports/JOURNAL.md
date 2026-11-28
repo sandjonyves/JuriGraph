@@ -34,6 +34,13 @@ Notes datées : ce qui est fait, chiffres, difficultés, et **ce que l'utilisate
    articles attendus corrigés). Indispensable avant de citer les chiffres de R4.
 2. Le rapport R4, en particulier les décisions du § 6 (V seule par défaut, graphe pour enrichir).
 
+### Export Excel des statistiques
+- `scripts/exporter_statistiques.py` → `data/reports/statistiques_jurigraph.xlsx` : 8 feuilles
+  (ablations, réglage, scénarios filtrables, catégories, recouvrement, corpus, essais), graphiques
+  Excel natifs, 75 formules recalculées sans erreur et contrôlées contre Python.
+- Nouvelle dépendance : `openpyxl` (ajoutée à `requirements.txt`).
+- Régénérer après chaque évaluation : `python scripts/exporter_statistiques.py`.
+
 ### En attente (hors étapes 5 et 8)
 - Crédits OpenRouter + `LLM_PROVIDER` / `LLM_MODEL` dans `.env` pour l'extraction avec DeepSeek V4.1 Flash.
 - Date de dépôt du mémoire.
