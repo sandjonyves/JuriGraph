@@ -1,0 +1,22 @@
+Version Neo4j : 2026.10.1
+
+== Hiérarchie ==
+Code      1
+Livre     2
+Titre     9
+Chapitre  37
+Section   54
+Article   427
+Alinea    627
+Articles sans parent : 0
+Parents d'articles : 78 ; articles par parent : min 1, médiane 4, max 31
+
+== Renvois ==
+renvois.json : 271 ; en base : 271
+Absents en base : 0 ; en trop en base : 0
+
+== Plein texte : accents et pluriels (top 10) ==
+'delit'      -> 10 rés. | 'délit'      -> 10 rés. | Jaccard = 1.00
+'meurtre'    ->  4 rés. | 'meurtres'   ->  4 rés. | Jaccard = 1.00
+'evasion'    ->  3 rés. | 'évasion'    ->  3 rés. | Jaccard = 1.00
+'vol'        ->  4 rés. | 'vols'       ->  4 rés. | Jaccard = 1.00
